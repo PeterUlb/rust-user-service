@@ -1,0 +1,55 @@
+use config::{Config, ConfigError, Environment, File};
+use serde::Deserialize;
+use std::env;
+
+#[derive(Debug, Deserialize)]
+pub struct Database {
+    pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct App {
+    pub port: i32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Configuration {
+    pub app: App,
+    pub database: Database,
+}
+
+impl Configuration {
+    pub fn new() -> Result<Self, ConfigError> {
+        /*
+            evaluation order: later overrides
+            1. default file
+            2. profile file
+            3. local file (don't push)
+            4. env vars
+
+            Option => optional, else required
+        */
+
+        let mut s = Config::new();
+
+        // Start off by merging in the "default" configuration file
+        s.merge(File::with_name("config/default"))?;
+
+        // Add in the current environment file
+        // Default to 'development' env
+        // Note that this file is _optional_
+        let env = env::var("APP_PROFILE").unwrap_or_else(|_| "development".into());
+        s.merge(File::with_name(&format!("config/{}", env)).required(false))?;
+
+        // Add in a local configuration file
+        // This file shouldn't be checked in to git
+        s.merge(File::with_name("config/local").required(false))?;
+
+        // Add in settings from the environment (with a prefix of APP)
+        // Eg.. `APP_DATABASE.URL=abc ./target/app` would set the `url` key in the database struct
+        s.merge(Environment::with_prefix("APP"))?;
+
+        // deserialize
+        s.try_into()
+    }
+}

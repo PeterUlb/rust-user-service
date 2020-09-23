@@ -1,0 +1,4 @@
+app:
+  port: 8080
+database:
+  url: postgres://dev:letmein@localhost/usrv_db
