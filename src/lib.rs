@@ -36,21 +36,24 @@ pub async fn run() -> std::io::Result<()> {
     // test if db conn works
     pool.get().unwrap();
 
-    let user_repo: Arc<dyn UserRepository> = Arc::new(UserRepositoryImpl::new(pool.clone())); // Pool clone will perform a clone on the inner arc
-    let user_service: Arc<dyn UserService> = Arc::new(UserServiceImpl::new(user_repo));
+    let user_repo: Arc<Box<dyn UserRepository>> =
+        Arc::new(Box::new(UserRepositoryImpl::new(pool.clone()))); // Pool clone will perform a clone on the inner arc
+    let user_service: Arc<Box<dyn UserService>> =
+        Arc::new(Box::new(UserServiceImpl::new(Arc::clone(&user_repo))));
 
     let port = config.app.port;
 
-    let user_service = web::Data::new(user_service);
-    let config_shared = web::Data::new(config);
+    // from avoids double Arc, since we already have an Arc and will use that
+    let user_service_app_data = web::Data::from(user_service);
+    let config_shared_app_data = web::Data::new(config);
 
     // Http server constructs an application instance for each thread, thus application data must be constructed multiple times.
     // If we want to share data between different threads, a shared object should be used, e.g. Arc.
     // Internally, web::Data uses Arc. Thus, in order to avoid creating two Arcs, we should create our Data before registering it using App::app_data().
     HttpServer::new(move || {
         App::new()
-            .app_data(user_service.clone())
-            .app_data(config_shared.clone())
+            .app_data(user_service_app_data.clone())
+            .app_data(config_shared_app_data.clone())
             .wrap(middleware::Logger::default())
             .service(api::hello)
             .service(api::echo)

@@ -19,10 +19,10 @@ pub trait UserService: Send + Sync {
 }
 
 pub struct UserServiceImpl {
-    user_repository: Arc<dyn UserRepository>,
+    user_repository: Arc<Box<dyn UserRepository>>,
 }
 impl UserServiceImpl {
-    pub fn new(user_repository: Arc<dyn UserRepository>) -> UserServiceImpl {
+    pub fn new(user_repository: Arc<Box<dyn UserRepository>>) -> UserServiceImpl {
         println!("New user service");
         return UserServiceImpl { user_repository };
     }
