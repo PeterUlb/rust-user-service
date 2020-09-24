@@ -1,21 +1,27 @@
 use config::{Config, ConfigError, Environment, File};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Database {
     pub url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct App {
     pub port: i32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Logging {
+    pub filters: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Configuration {
     pub app: App,
     pub database: Database,
+    pub logging: Logging,
 }
 
 impl Configuration {

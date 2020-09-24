@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
 use crate::model::User;
 use crate::repository::UserRepository;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum ServiceError {
