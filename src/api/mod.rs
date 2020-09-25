@@ -1,6 +1,6 @@
 use crate::error::{ApiError, ApiErrorType};
 use crate::model::User;
-use crate::service::UserService;
+use crate::service::user_service::UserService;
 use actix_web::web;
 use actix_web::web::Json;
 use actix_web::{get, HttpResponse, Responder};

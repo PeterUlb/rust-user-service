@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::Debug;
 
-use crate::service::ServiceError;
+use crate::service::user_service::UserServiceError;
 use actix_web::error::BlockingError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
@@ -109,10 +109,10 @@ impl ResponseError for ApiError {
     }
 }
 
-impl From<crate::service::ServiceError> for ApiError {
-    fn from(error: ServiceError) -> Self {
+impl From<UserServiceError> for ApiError {
+    fn from(error: UserServiceError) -> Self {
         match error {
-            ServiceError::GenericDatabaseError(e) => e.into(),
+            UserServiceError::GenericDatabaseError(e) => e.into(),
         }
     }
 }
