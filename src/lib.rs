@@ -3,6 +3,7 @@ extern crate diesel;
 #[macro_use]
 extern crate log;
 use crate::repository::user_repository::UserRepositoryImpl;
+use crate::service::user_service::UserService;
 use crate::service::user_service::UserServiceImpl;
 use actix_web::{middleware, web, App, HttpServer};
 use diesel::prelude::*;
@@ -42,14 +43,14 @@ pub async fn run() -> std::io::Result<()> {
     pool.get().unwrap();
 
     let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone())); // Pool clone will perform a clone on the inner arc
-    let user_service = Arc::new(UserServiceImpl::new(Arc::clone(&user_repo)));
+
+    // Until https://github.com/actix/actix-web/issues/1710 is solved, we need to an Arc<Box<dyn>>, even though Arc<dyn> should be good enough
+    let user_service: Arc<Box<dyn UserService>> =
+        Arc::new(Box::new(UserServiceImpl::new(Arc::clone(&user_repo))));
 
     let port = config.app.port;
 
     // from avoids double Arc, since we already have an Arc and will use that
-    // Http server constructs an application instance for each thread, thus application data must be constructed multiple times.
-    // If we want to share data between different threads, a shared object should be used, e.g. Arc.
-    // Internally, web::Data uses Arc. Thus, in order to avoid creating two Arcs, we should create our Data before registering it using App::app_data().
     let user_service_app_data = web::Data::from(user_service);
     let config_shared_app_data = web::Data::new(config);
     info!("Initial setup took {} ms", start.elapsed().as_millis());

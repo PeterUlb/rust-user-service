@@ -18,16 +18,16 @@ pub trait UserService: Send + Sync {
     fn get_all_user(&self) -> Result<Vec<User>, UserServiceError>;
 }
 
-pub struct UserServiceImpl {
-    user_repository: Arc<Box<dyn UserRepository>>,
+pub struct UserServiceImpl<R: UserRepository> {
+    user_repository: Arc<R>,
 }
-impl UserServiceImpl {
-    pub fn new(user_repository: Arc<Box<dyn UserRepository>>) -> Box<dyn UserService> {
+impl<R: UserRepository> UserServiceImpl<R> {
+    pub fn new(user_repository: Arc<R>) -> Self {
         info!("Created User Service");
-        return Box::new(UserServiceImpl { user_repository });
+        Self { user_repository }
     }
 }
-impl UserService for UserServiceImpl {
+impl<R: UserRepository> UserService for UserServiceImpl<R> {
     fn register_user(&self, username: &str) -> i32 {
         return if username == "Hans" {
             self.user_repository.get_user_by_id(333)

@@ -16,9 +16,9 @@ pub struct UserRepositoryImpl {
 }
 
 impl UserRepositoryImpl {
-    pub fn new(pg_pool: PgPool) -> Box<dyn UserRepository> {
+    pub fn new(pg_pool: PgPool) -> Self {
         info!("Created User Repository");
-        return Box::new(UserRepositoryImpl { pool: pg_pool });
+        Self { pool: pg_pool }
     }
 }
 
