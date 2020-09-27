@@ -5,15 +5,17 @@ extern crate log;
 use crate::repository::user_repository::UserRepositoryImpl;
 use crate::service::user_service::UserService;
 use crate::service::user_service::UserServiceImpl;
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use std::sync::Arc;
 
 mod api;
+mod auth;
 mod configuration;
 mod db;
 mod error;
+mod middleware;
 mod model;
 mod repository;
 mod schema;
@@ -24,15 +26,18 @@ pub async fn run() -> std::io::Result<()> {
     let start = std::time::Instant::now();
 
     let config = match configuration::Configuration::new() {
-        Ok(config) => config,
-        Err(e) => panic!(e),
+        Ok(config) => Arc::new(config),
+        Err(e) => {
+            env_logger::init(); // Use default settings, since we have no config
+            error!("{}", e);
+            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
+        }
     };
     println!("{:?}", config);
 
     // TODO: move
-    env_logger::Builder::new()
+    env_logger::builder()
         .parse_filters(&config.logging.filters)
-        .default_format()
         .init();
 
     let manager = ConnectionManager::<PgConnection>::new(&config.database.url);
@@ -50,15 +55,15 @@ pub async fn run() -> std::io::Result<()> {
 
     let port = config.app.port;
 
+    // actix creates multiple copies of the application state and the handlers. It creates one copy for each thread.
     // from avoids double Arc, since we already have an Arc and will use that
     let user_service_app_data = web::Data::from(user_service);
-    let config_shared_app_data = web::Data::new(config);
     info!("Initial setup took {} ms", start.elapsed().as_millis());
     HttpServer::new(move || {
         App::new()
             .app_data(user_service_app_data.clone())
-            .app_data(config_shared_app_data.clone())
-            .wrap(middleware::Logger::default())
+            .wrap(middleware::jwt::JwtAuth::new(config.jwt.clone()))
+            .wrap(actix_web::middleware::Logger::default())
             .service(api::hello)
             .service(api::echo)
             .service(web::scope("/user").service(api::user::echo))

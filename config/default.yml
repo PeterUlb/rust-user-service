@@ -4,3 +4,5 @@ database:
   url: postgres://dev:letmein@localhost/usrv_db
 logging:
   filters: actix_server=info,actix_web=info,user_service=info
+jwt:
+  access_secret: super-secret-access

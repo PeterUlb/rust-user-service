@@ -18,10 +18,16 @@ pub struct Logging {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Jwt {
+    pub access_secret: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Configuration {
     pub app: App,
     pub database: Database,
     pub logging: Logging,
+    pub jwt: Jwt,
 }
 
 impl Configuration {

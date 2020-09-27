@@ -11,6 +11,8 @@ pub enum ApiErrorType {
     DatabaseDieselError(diesel::result::Error),
     DbRecordNotFound,
     InternalError,
+    JwtDecodeError(jsonwebtoken::errors::Error),
+    NoAccessTokenHeader,
 }
 impl ApiErrorType {
     fn status(&self) -> u16 {
@@ -19,6 +21,8 @@ impl ApiErrorType {
             DatabaseDieselError(_) => 500,
             DbRecordNotFound => 404,
             InternalError => 500,
+            JwtDecodeError(_) => 401,
+            NoAccessTokenHeader => 401,
         }
     }
 
@@ -28,6 +32,8 @@ impl ApiErrorType {
             DatabaseDieselError(_) => self.get_default_text(),
             DbRecordNotFound => self.get_default_text(),
             InternalError => self.get_default_text(),
+            JwtDecodeError(_) => self.get_default_text(),
+            NoAccessTokenHeader => "provide access token",
         }
     }
 
@@ -37,6 +43,8 @@ impl ApiErrorType {
             DatabaseDieselError(_) => 1,
             DbRecordNotFound => 2,
             InternalError => 3,
+            JwtDecodeError(_) => 4,
+            NoAccessTokenHeader => 5,
         }
     }
 
@@ -63,11 +71,17 @@ pub struct ApiError {
 
 impl ApiError {
     pub fn new(error_type: ApiErrorType) -> ApiError {
-        return ApiError {
+        error_type.into()
+    }
+}
+
+impl From<ApiErrorType> for ApiError {
+    fn from(error_type: ApiErrorType) -> Self {
+        Self {
             status: error_type.status(),
             message: error_type.message(),
             code: error_type.code(),
-        };
+        }
     }
 }
 
