@@ -24,7 +24,7 @@ pub fn decode_access_jwt(
         .map(|data| data.claims)
         .map_err(|e| {
             error!("{}", e);
-            ApiError::InternalServerError
+            ApiError::JwtValidationError(e)
         })
 }
 

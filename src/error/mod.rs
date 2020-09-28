@@ -17,12 +17,12 @@ pub struct MissingField {
     pub internal_code: i32,
 }
 
-#[derive(Clone, Debug, Serialize)]
-#[serde(untagged)]
+#[derive(Debug)]
 pub enum ApiError {
     MissingFields(Vec<MissingField>),
     InternalServerError,
     NoAccessTokenHeader,
+    JwtValidationError(jsonwebtoken::errors::Error),
 }
 
 impl ResponseError for ApiError {
@@ -48,7 +48,14 @@ impl From<&ApiError> for HttpResponse {
             ApiError::NoAccessTokenHeader => {
                 let resp = DefaultErrorResponse::new(
                     ErrorCode::MISSING_ACCESS_TOKEN_HEADER,
-                    String::from(String::from("Missing Access Token")),
+                    String::from("Missing Access Token"),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
+            ApiError::JwtValidationError(e) => {
+                let resp = DefaultErrorResponse::new(
+                    ErrorCode::JWT_VALIDATION_ERROR,
+                    String::from(format!("{}", e)),
                 );
                 HttpResponse::build(resp.status_code).json(resp)
             }

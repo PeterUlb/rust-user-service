@@ -2,12 +2,12 @@ use crate::error::ApiError;
 use crate::error::MissingField;
 use crate::model::User;
 use crate::service::user_service::UserService;
+use actix_web::get;
 use actix_web::web;
 use actix_web::web::Json;
 use actix_web::HttpRequest;
-use actix_web::{get, HttpResponse, Responder};
 
-pub mod user;
+pub mod users;
 
 #[get("/")]
 pub async fn hello(
@@ -27,8 +27,4 @@ pub async fn echo() -> Result<Json<String>, ApiError> {
         field_name: String::from("abc"),
         internal_code: 33,
     }]))
-}
-
-pub async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
 }

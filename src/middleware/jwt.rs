@@ -5,9 +5,12 @@ use crate::auth;
 use crate::configuration;
 use crate::error::ApiError;
 use actix_service::{Service, Transform};
+use actix_web::http::Method;
 use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error};
 use futures::future;
 use futures::Future;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 // There are two steps in middleware processing.
 // 1. Middleware initialization, middleware factory gets called with
@@ -15,11 +18,18 @@ use futures::Future;
 // 2. Middleware's call method gets called with normal request.
 pub struct JwtAuth {
     jwt_config: configuration::Jwt,
+    exempt_path: Rc<HashMap<String, Vec<Method>>>,
 }
 
 impl JwtAuth {
-    pub fn new(jwt_config: configuration::Jwt) -> Self {
-        Self { jwt_config }
+    pub fn new(
+        jwt_config: configuration::Jwt,
+        exempt_path: Rc<HashMap<String, Vec<Method>>>,
+    ) -> Self {
+        Self {
+            jwt_config,
+            exempt_path,
+        }
     }
 }
 
@@ -43,6 +53,7 @@ where
         future::ok(JwtAuthMiddleware {
             service: service,
             jwt_config: self.jwt_config.clone(),
+            exempt_path: self.exempt_path.clone(),
         })
     }
 }
@@ -50,6 +61,7 @@ where
 pub struct JwtAuthMiddleware<S> {
     service: S,
     jwt_config: configuration::Jwt,
+    exempt_path: Rc<HashMap<String, Vec<Method>>>,
 }
 
 impl<S, B> Service for JwtAuthMiddleware<S>
@@ -70,23 +82,30 @@ where
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         debug!("Jwt Auth Middleware called for {}", req.path());
 
-        let token = match auth::get_auth_token(&req.headers()) {
-            Some(token) => token,
-            None => {
-                return Box::pin(async {
-                    Err(ApiError::from(ApiError::NoAccessTokenHeader).into())
-                });
-            }
+        let skip = match self.exempt_path.get(req.path()) {
+            Some(v) => v.contains(req.method()),
+            None => req.method() == Method::OPTIONS,
         };
 
-        let claims = match auth::decode_access_jwt(token, &self.jwt_config) {
-            Ok(claims) => claims,
-            Err(e) => {
-                return Box::pin(async { Err(e.into()) });
-            }
-        };
+        if skip == false {
+            let token = match auth::get_auth_token(&req.headers()) {
+                Some(token) => token,
+                None => {
+                    return Box::pin(async {
+                        Err(ApiError::from(ApiError::NoAccessTokenHeader).into())
+                    });
+                }
+            };
 
-        info!("{:?}", claims);
+            let claims = match auth::decode_access_jwt(token, &self.jwt_config) {
+                Ok(claims) => claims,
+                Err(e) => {
+                    return Box::pin(async { Err(e.into()) });
+                }
+            };
+
+            info!("{:?}", claims);
+        }
 
         let fut = self.service.call(req);
 

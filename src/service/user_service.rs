@@ -1,5 +1,6 @@
 use crate::model::User;
 use crate::repository::user_repository::UserRepository;
+use rand::Rng;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -20,15 +21,30 @@ pub trait UserService: Send + Sync {
 
 pub struct UserServiceImpl<R: UserRepository> {
     user_repository: Arc<R>,
+    argon2_config: Arc<argon2::Config<'static>>,
 }
 impl<R: UserRepository> UserServiceImpl<R> {
-    pub fn new(user_repository: Arc<R>) -> Self {
+    pub fn new(user_repository: Arc<R>, argon2_config: Arc<argon2::Config<'static>>) -> Self {
         info!("Created User Service");
-        Self { user_repository }
+        Self {
+            user_repository,
+            argon2_config,
+        }
     }
 }
 impl<R: UserRepository> UserService for UserServiceImpl<R> {
     fn register_user(&self, username: &str) -> i32 {
+        let salt: String = rand::rngs::OsRng
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(32)
+            .collect();
+        let hash = argon2::hash_encoded(
+            "mypassword".as_bytes(),
+            salt.as_bytes(),
+            &self.argon2_config,
+        )
+        .unwrap();
+        info!("{}", hash);
         return if username == "Hans" {
             self.user_repository.get_user_by_id(333)
         } else {
@@ -90,7 +106,8 @@ mod tests {
     #[test]
     fn get_all_user() {
         let user_repo = Arc::new(MockUserRepo {});
-        let user_service = UserServiceImpl::new(user_repo);
+        let user_service =
+            UserServiceImpl::new(user_repo, std::sync::Arc::new(argon2::Config::default()));
 
         let users = match user_service.get_all_user() {
             Ok(users) => users,

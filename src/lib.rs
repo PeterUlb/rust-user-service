@@ -47,27 +47,43 @@ pub async fn run() -> std::io::Result<()> {
     // test if db conn works
     pool.get().unwrap();
 
+    let argon2_config = Arc::new(argon2::Config::default());
+
     let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone())); // Pool clone will perform a clone on the inner arc
 
     // Until https://github.com/actix/actix-web/issues/1710 is solved, we need to an Arc<Box<dyn>>, even though Arc<dyn> should be good enough
-    let user_service: Arc<Box<dyn UserService>> =
-        Arc::new(Box::new(UserServiceImpl::new(Arc::clone(&user_repo))));
+    let user_service: Arc<Box<dyn UserService>> = Arc::new(Box::new(UserServiceImpl::new(
+        Arc::clone(&user_repo),
+        Arc::clone(&argon2_config),
+    )));
 
     let port = config.app.port;
 
     // actix creates multiple copies of the application state and the handlers. It creates one copy for each thread.
     // from avoids double Arc, since we already have an Arc and will use that
     let user_service_app_data = web::Data::from(user_service);
+
     info!("Initial setup took {} ms", start.elapsed().as_millis());
     HttpServer::new(move || {
+        let mut exempt_path = std::collections::HashMap::new();
+        exempt_path.insert(
+            String::from("/api/v1/users"),
+            vec![actix_web::http::Method::POST],
+        );
+        exempt_path.insert(
+            String::from("/api/v1/users/"),
+            vec![actix_web::http::Method::POST],
+        );
+
+        let exempt_path = std::rc::Rc::new(exempt_path);
         App::new()
             .app_data(user_service_app_data.clone())
-            .wrap(middleware::jwt::JwtAuth::new(config.jwt.clone()))
+            .wrap(middleware::jwt::JwtAuth::new(
+                config.jwt.clone(),
+                exempt_path.clone(),
+            ))
             .wrap(actix_web::middleware::Logger::default())
-            .service(api::hello)
-            .service(api::echo)
-            .service(web::scope("/user").service(api::user::echo))
-            .route("/hey", web::get().to(api::manual_hello))
+            .service(web::scope("/api/v1").configure(api::users::init_routes))
     })
     .bind(format!("127.0.0.1:{}", port))?
     .run()
