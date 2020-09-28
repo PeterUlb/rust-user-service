@@ -1,4 +1,5 @@
 use crate::error::ApiError;
+use crate::error::MissingField;
 use crate::model::User;
 use crate::service::user_service::UserService;
 use actix_web::web;
@@ -22,8 +23,10 @@ pub async fn hello(
 
 #[get("/echo")]
 pub async fn echo() -> Result<Json<String>, ApiError> {
-    //Err(ApiError::new(ApiErrorType::InternalError))
-    Ok(Json(String::from("s: &str")))
+    Err(ApiError::MissingFields(vec![MissingField {
+        field_name: String::from("abc"),
+        internal_code: 33,
+    }]))
 }
 
 pub async fn manual_hello() -> impl Responder {

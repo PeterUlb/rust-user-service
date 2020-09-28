@@ -3,7 +3,7 @@ use std::task::{Context, Poll};
 
 use crate::auth;
 use crate::configuration;
-use crate::error::{ApiError, ApiErrorType};
+use crate::error::ApiError;
 use actix_service::{Service, Transform};
 use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error};
 use futures::future;
@@ -74,7 +74,7 @@ where
             Some(token) => token,
             None => {
                 return Box::pin(async {
-                    Err(ApiError::from(ApiErrorType::NoAccessTokenHeader).into())
+                    Err(ApiError::from(ApiError::NoAccessTokenHeader).into())
                 });
             }
         };

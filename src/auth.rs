@@ -1,5 +1,5 @@
 use crate::configuration;
-use crate::error::{ApiError, ApiErrorType};
+use crate::error::ApiError;
 use actix_web::http::header::HeaderMap;
 use jsonwebtoken::decode;
 use jsonwebtoken::DecodingKey;
@@ -22,7 +22,10 @@ pub fn decode_access_jwt(
     let decoding_key = DecodingKey::from_secret(&jwt_config.access_secret.as_ref());
     decode::<AccessClaims>(token, &decoding_key, &Validation::default())
         .map(|data| data.claims)
-        .map_err(|e| ApiError::new(ApiErrorType::JwtDecodeError(e)))
+        .map_err(|e| {
+            error!("{}", e);
+            ApiError::InternalServerError
+        })
 }
 
 pub fn get_auth_token(headers: &HeaderMap) -> Option<&str> {
