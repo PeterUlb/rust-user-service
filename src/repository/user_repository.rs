@@ -1,32 +1,18 @@
 // Definitions
-
-use crate::db;
-use crate::db::PgPool;
+use crate::db::PgPooledConnection;
 use diesel::{QueryResult, RunQueryDsl};
 
 use crate::model::User;
 
-pub trait UserRepository: Send + Sync {
+pub trait UserRepository {
     fn get_all(&self) -> QueryResult<Vec<User>>;
     fn get_user_by_id(&self, id: i32) -> i32;
 }
 
-pub struct UserRepositoryImpl {
-    pool: PgPool,
-}
-
-impl UserRepositoryImpl {
-    pub fn new(pg_pool: PgPool) -> Self {
-        info!("Created User Repository");
-        Self { pool: pg_pool }
-    }
-}
-
-impl UserRepository for UserRepositoryImpl {
+impl UserRepository for PgPooledConnection {
     fn get_all(&self) -> QueryResult<Vec<User>> {
-        let connection = db::get_conn(&self.pool)?;
         use crate::schema::users::dsl::*;
-        return users.load::<User>(&connection);
+        return users.load::<User>(self);
     }
 
     fn get_user_by_id(&self, id: i32) -> i32 {

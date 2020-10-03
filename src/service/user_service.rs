@@ -1,7 +1,6 @@
 use crate::model::User;
 use crate::repository::user_repository::UserRepository;
 use rand::Rng;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum UserServiceError {
@@ -14,59 +13,37 @@ impl From<diesel::result::Error> for UserServiceError {
     }
 }
 
-pub trait UserService: Send + Sync {
-    fn register_user(&self, username: &str) -> i32;
-    fn get_all_user(&self) -> Result<Vec<User>, UserServiceError>;
+pub fn register_user(
+    user_repository: &dyn UserRepository,
+    username: &str,
+    argon2_config: &argon2::Config,
+) -> i32 {
+    let salt: String = rand::rngs::OsRng
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(32)
+        .collect();
+    let hash =
+        argon2::hash_encoded("mypassword".as_bytes(), salt.as_bytes(), argon2_config).unwrap();
+    info!("{}", hash);
+    return if username == "Hans" {
+        user_repository.get_user_by_id(333)
+    } else {
+        user_repository.get_user_by_id(111)
+    };
 }
 
-pub struct UserServiceImpl<R: UserRepository> {
-    user_repository: Arc<R>,
-    argon2_config: Arc<argon2::Config<'static>>,
-}
-impl<R: UserRepository> UserServiceImpl<R> {
-    pub fn new(user_repository: Arc<R>, argon2_config: Arc<argon2::Config<'static>>) -> Self {
-        info!("Created User Service");
-        Self {
-            user_repository,
-            argon2_config,
-        }
-    }
-}
-impl<R: UserRepository> UserService for UserServiceImpl<R> {
-    fn register_user(&self, username: &str) -> i32 {
-        let salt: String = rand::rngs::OsRng
-            .sample_iter(&rand::distributions::Alphanumeric)
-            .take(32)
-            .collect();
-        let hash = argon2::hash_encoded(
-            "mypassword".as_bytes(),
-            salt.as_bytes(),
-            &self.argon2_config,
-        )
-        .unwrap();
-        info!("{}", hash);
-        return if username == "Hans" {
-            self.user_repository.get_user_by_id(333)
-        } else {
-            self.user_repository.get_user_by_id(111)
-        };
-    }
-
-    fn get_all_user(&self) -> Result<Vec<User>, UserServiceError> {
-        return self.user_repository.get_all().map_err(|e| e.into());
-    }
+pub fn get_all_user(user_repository: &dyn UserRepository) -> Result<Vec<User>, UserServiceError> {
+    return user_repository.get_all().map_err(|e| e.into());
 }
 
 #[cfg(test)]
 mod tests {
+
     use crate::model::User;
     use crate::repository::user_repository::UserRepository;
-    use crate::service::user_service::UserService;
-    use crate::service::user_service::UserServiceImpl;
     use chrono::NaiveDate;
     use chrono::Utc;
     use diesel::QueryResult;
-    use std::sync::Arc;
 
     struct MockUserRepo {}
 
@@ -105,11 +82,8 @@ mod tests {
 
     #[test]
     fn get_all_user() {
-        let user_repo = Arc::new(MockUserRepo {});
-        let user_service =
-            UserServiceImpl::new(user_repo, std::sync::Arc::new(argon2::Config::default()));
-
-        let users = match user_service.get_all_user() {
+        let user_repo = MockUserRepo {};
+        let users = match super::get_all_user(&user_repo) {
             Ok(users) => users,
             Err(e) => panic!(e),
         };

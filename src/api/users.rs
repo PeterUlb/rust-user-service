@@ -1,6 +1,8 @@
 use crate::configuration::Configuration;
+use crate::db;
+use crate::db::PgPool;
 use crate::error::ApiError;
-use crate::service::user_service::UserService;
+use crate::service;
 use actix_web::web::Json;
 use actix_web::HttpRequest;
 use actix_web::{get, post, web};
@@ -15,12 +17,21 @@ pub async fn echo(config: web::Data<Configuration>) -> Result<Json<Configuration
 #[post("/users")]
 pub async fn hello(
     req: HttpRequest,
-    user_service: web::Data<Box<dyn UserService>>,
+    pool: web::Data<PgPool>,
+    argon2_config: web::Data<argon2::Config<'static>>,
 ) -> Result<Json<Vec<String>>, ApiError> {
     let x = &*req.extensions();
     info!("{:?}", x);
-    let x = web::block(move || -> Result<i32, ApiError> { Ok(user_service.register_user("Blub")) })
-        .await?;
+    let conn = db::get_conn(&pool)?;
+
+    let x = web::block(move || -> Result<i32, ApiError> {
+        Ok(service::user_service::register_user(
+            &conn,
+            "Jochen",
+            &argon2_config,
+        ))
+    })
+    .await?;
     info!("{}", x);
     Ok(Json(vec!["a".to_owned()]))
 }
