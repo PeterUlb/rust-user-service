@@ -5,24 +5,25 @@ use std::fmt;
 use std::fmt::Debug;
 
 use crate::error::codes::ErrorCode;
-use crate::error::responses::{DefaultErrorResponse, MissingFieldsErrorResponse};
+use crate::error::responses::{DefaultErrorResponse, FieldErrorResponse};
 use crate::service::user_service::UserServiceError;
 use actix_web::error::BlockingError;
 use actix_web::{HttpResponse, ResponseError};
 use serde::Serialize;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash, Serialize)]
-pub struct MissingField {
+pub struct Field {
     pub field_name: String,
-    pub internal_code: i32,
 }
 
 #[derive(Debug)]
 pub enum ApiError {
-    MissingFields(Vec<MissingField>),
+    MissingFields(Vec<Field>),
+    JsonValidationFailed(Vec<Field>),
     InternalServerError,
     NoAccessTokenHeader,
     JwtValidationError(jsonwebtoken::errors::Error),
+    EntityAlreadyExists,
 }
 
 impl ResponseError for ApiError {
@@ -42,7 +43,19 @@ impl From<&ApiError> for HttpResponse {
                 HttpResponse::build(resp.status_code).json(resp)
             }
             ApiError::MissingFields(fields) => {
-                let resp = MissingFieldsErrorResponse::new(fields.to_vec());
+                let resp = FieldErrorResponse::new(
+                    ErrorCode::MISSING_FIELDS,
+                    String::from("Fields are missing"),
+                    fields.to_vec(),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
+            ApiError::JsonValidationFailed(fields) => {
+                let resp = FieldErrorResponse::new(
+                    ErrorCode::JSON_VALIDATION_FAILED,
+                    String::from("Validation failed for fields"),
+                    fields.to_vec(),
+                );
                 HttpResponse::build(resp.status_code).json(resp)
             }
             ApiError::NoAccessTokenHeader => {
@@ -56,6 +69,13 @@ impl From<&ApiError> for HttpResponse {
                 let resp = DefaultErrorResponse::new(
                     ErrorCode::JWT_VALIDATION_ERROR,
                     String::from(format!("{}", e)),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
+            ApiError::EntityAlreadyExists => {
+                let resp = DefaultErrorResponse::new(
+                    ErrorCode::ENTITY_ALREADY_EXISTS,
+                    String::from("Entity already exists"),
                 );
                 HttpResponse::build(resp.status_code).json(resp)
             }
@@ -84,6 +104,7 @@ where
 impl From<UserServiceError> for ApiError {
     fn from(error: UserServiceError) -> Self {
         match error {
+            UserServiceError::DatabaseEntryAlreadyExists => ApiError::EntityAlreadyExists,
             UserServiceError::GenericDatabaseError(e) => e.into(),
         }
     }
@@ -95,5 +116,19 @@ impl From<diesel::result::Error> for ApiError {
             diesel::result::Error::NotFound => ApiError::InternalServerError,
             _ => ApiError::InternalServerError,
         }
+    }
+}
+
+impl From<validator::ValidationErrors> for ApiError {
+    fn from(error: validator::ValidationErrors) -> Self {
+        error!("{}", error);
+        let keys = error
+            .field_errors()
+            .keys()
+            .map(|s| Field {
+                field_name: String::from(*s),
+            })
+            .collect::<Vec<Field>>();
+        ApiError::JsonValidationFailed(keys)
     }
 }

@@ -2,7 +2,9 @@
 extern crate diesel;
 #[macro_use]
 extern crate log;
-use actix_web::{web, App, HttpServer};
+extern crate validator;
+use actix_web::http::StatusCode;
+use actix_web::{web, App, HttpResponse, HttpServer};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use std::sync::Arc;
@@ -63,16 +65,22 @@ pub async fn run() -> std::io::Result<()> {
         App::new()
             .data(pool.clone())
             .app_data(argon2_config.clone())
+            // FromRequest for Json<T> checks app_data extension map for JsonConfig type, and if peresent uses that
+            .app_data(
+                web::JsonConfig::default()
+                    .limit(4096)
+                    .content_type(|_| true)
+                    .error_handler(|err, _| {
+                        error!("{}", err);
+                        HttpResponse::build(StatusCode::BAD_REQUEST).into()
+                    }),
+            )
             .wrap(middleware::jwt::JwtAuth::new(
                 config.jwt.clone(),
                 exempt_path.clone(),
             ))
             .wrap(actix_web::middleware::Logger::default())
-            .service(
-                web::scope("/api/v1")
-                    .configure(api::init_routes)
-                    .configure(api::users::init_routes),
-            )
+            .service(web::scope("/api/v1").configure(api::users::init_routes))
     })
     .bind(format!("127.0.0.1:{}", port))?
     .run()

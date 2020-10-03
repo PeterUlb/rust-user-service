@@ -21,20 +21,20 @@ impl DefaultErrorResponse {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct MissingFieldsErrorResponse {
+pub struct FieldErrorResponse {
     #[serde(skip_serializing)]
     pub status_code: StatusCode,
     pub message: String,
     pub code: u16,
-    pub details: Vec<crate::error::MissingField>,
+    pub details: Vec<crate::error::Field>,
 }
 
-impl MissingFieldsErrorResponse {
-    pub fn new(fields: Vec<crate::error::MissingField>) -> Self {
+impl FieldErrorResponse {
+    pub fn new(code: ErrorCode, message: String, fields: Vec<crate::error::Field>) -> Self {
         Self {
             status_code: StatusCode::BAD_REQUEST,
-            message: "Some fields are missing in the request".to_owned(),
-            code: ErrorCode::MISSING_FIELDS.0,
+            message: message,
+            code: code.0,
             details: fields,
         }
     }

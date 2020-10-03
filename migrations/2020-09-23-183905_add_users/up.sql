@@ -5,7 +5,7 @@ CREATE TABLE users (
   password VARCHAR(255) NOT NULL,
   password_version INTEGER NOT NULL,
   date_of_birth DATE NOT NULL,
-  status INTEGER NOT NULL DEFAULT 0,
+  status INTEGER NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
