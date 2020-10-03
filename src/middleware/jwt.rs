@@ -6,7 +6,7 @@ use crate::configuration;
 use crate::error::ApiError;
 use actix_service::{Service, Transform};
 use actix_web::http::Method;
-use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error};
+use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error, HttpMessage};
 use futures::future;
 use futures::Future;
 use std::collections::HashMap;
@@ -82,10 +82,14 @@ where
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         debug!("Jwt Auth Middleware called for {}", req.path());
 
-        let skip = match self.exempt_path.get(req.path()) {
+        let mut skip = match self.exempt_path.get(req.path()) {
             Some(v) => v.contains(req.method()),
             None => req.method() == Method::OPTIONS,
         };
+
+        if !self.jwt_config.active {
+            skip = true;
+        }
 
         if skip == false {
             let token = match auth::get_auth_token(&req.headers()) {
@@ -104,7 +108,7 @@ where
                 }
             };
 
-            info!("{:?}", claims);
+            req.extensions_mut().insert(claims);
         }
 
         let fut = self.service.call(req);

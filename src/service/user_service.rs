@@ -1,4 +1,4 @@
-use crate::model::{PasswordVersion, RegisterUserDto, UserStatus};
+use crate::model::users::{PasswordVersion, RegisterUserDto, UserStatus};
 use crate::repository::user_repository::UserRepository;
 use rand::Rng;
 
@@ -8,13 +8,8 @@ pub enum UserServiceError {
     GenericDatabaseError(diesel::result::Error),
 }
 
-fn print_type_of<T>(_: &T) {
-    error!("{}", std::any::type_name::<T>())
-}
-
 impl From<diesel::result::Error> for UserServiceError {
     fn from(error: diesel::result::Error) -> UserServiceError {
-        print_type_of(&error);
         match error {
             diesel::result::Error::DatabaseError(db_error, _) => match db_error {
                 diesel::result::DatabaseErrorKind::UniqueViolation => {
@@ -48,9 +43,7 @@ pub fn register_user(
 
 #[cfg(test)]
 mod tests {
-
-    use crate::model::NewUser;
-    use crate::model::{RegisterUserDto, User};
+    use crate::model::users::{NewUser, RegisterUserDto, User};
     use crate::repository::user_repository::UserRepository;
     use chrono::NaiveDate;
     use chrono::Utc;

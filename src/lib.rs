@@ -75,12 +75,20 @@ pub async fn run() -> std::io::Result<()> {
                         HttpResponse::build(StatusCode::BAD_REQUEST).into()
                     }),
             )
+            .app_data(web::PathConfig::default().error_handler(|err, _| {
+                error!("{}", err);
+                HttpResponse::build(StatusCode::BAD_REQUEST).into()
+            }))
             .wrap(middleware::jwt::JwtAuth::new(
                 config.jwt.clone(),
                 exempt_path.clone(),
             ))
             .wrap(actix_web::middleware::Logger::default())
-            .service(web::scope("/api/v1").configure(api::users::init_routes))
+            .service(
+                web::scope("/api/v1")
+                    .configure(api::users::init_routes)
+                    .configure(api::session::init_routes),
+            )
     })
     .bind(format!("127.0.0.1:{}", port))?
     .run()

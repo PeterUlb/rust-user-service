@@ -1,6 +1,6 @@
 // Definitions
 use crate::db::PgPooledConnection;
-use crate::model::{NewUser, User};
+use crate::model::users::{NewUser, User};
 use crate::schema::users;
 use diesel::prelude::*;
 use diesel::{QueryResult, RunQueryDsl};

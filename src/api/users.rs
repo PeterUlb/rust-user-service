@@ -1,7 +1,7 @@
 use crate::db;
 use crate::db::PgPool;
 use crate::error::ApiError;
-use crate::model::RegisterUserDto;
+use crate::model::users::RegisterUserDto;
 use crate::service;
 use crate::validator::Validate;
 use actix_web::web::Json;

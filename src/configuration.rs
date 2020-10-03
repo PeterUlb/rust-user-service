@@ -19,6 +19,7 @@ pub struct Logging {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Jwt {
+    pub active: bool,
     pub access_secret: String,
 }
 
@@ -43,6 +44,7 @@ impl Configuration {
         */
 
         let mut s = Config::new();
+        s.set_default("JWT.ACTIVE", true)?;
 
         let config_path = env::var("APP_CONFIG_PATH").unwrap_or_else(|_| "config".into());
 
