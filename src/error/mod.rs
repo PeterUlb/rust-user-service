@@ -4,8 +4,10 @@ pub mod responses;
 use std::fmt;
 use std::fmt::Debug;
 
+use crate::auth::AuthorizationError;
 use crate::error::codes::ErrorCode;
 use crate::error::responses::{DefaultErrorResponse, FieldErrorResponse};
+use crate::service::session_service::SessionServiceError;
 use crate::service::user_service::UserServiceError;
 use actix_web::error::BlockingError;
 use actix_web::{HttpResponse, ResponseError};
@@ -24,7 +26,16 @@ pub enum ApiError {
     NoAccessTokenHeader,
     JwtValidationError(jsonwebtoken::errors::Error),
     EntityAlreadyExists,
+    AuthorizationError,
 }
+
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for ApiError {}
 
 impl ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
@@ -79,13 +90,14 @@ impl From<&ApiError> for HttpResponse {
                 );
                 HttpResponse::build(resp.status_code).json(resp)
             }
+            ApiError::AuthorizationError => {
+                let resp = DefaultErrorResponse::new(
+                    ErrorCode::NOT_AUTHORIZED_FOR_ACTION,
+                    String::from("Not authorized for action"),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
         }
-    }
-}
-
-impl fmt::Display for ApiError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
     }
 }
 
@@ -107,6 +119,22 @@ impl From<UserServiceError> for ApiError {
             UserServiceError::DatabaseEntryAlreadyExists => ApiError::EntityAlreadyExists,
             UserServiceError::GenericDatabaseError(e) => e.into(),
         }
+    }
+}
+
+impl From<SessionServiceError> for ApiError {
+    fn from(error: SessionServiceError) -> Self {
+        match error {
+            SessionServiceError::DatabaseEntryAlreadyExists => ApiError::EntityAlreadyExists,
+            SessionServiceError::GenericDatabaseError(e) => e.into(),
+            SessionServiceError::AuthorizationError(e) => e.into(),
+        }
+    }
+}
+
+impl From<AuthorizationError> for ApiError {
+    fn from(_: AuthorizationError) -> Self {
+        ApiError::AuthorizationError
     }
 }
 

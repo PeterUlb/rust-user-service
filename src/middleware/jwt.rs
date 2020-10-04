@@ -89,6 +89,7 @@ where
 
         if !self.jwt_config.active {
             skip = true;
+            // TODO: Add default claims
         }
 
         if skip == false {
@@ -104,6 +105,7 @@ where
             let claims = match auth::decode_access_jwt(token, &self.jwt_config) {
                 Ok(claims) => claims,
                 Err(e) => {
+                    error!("{}", e);
                     return Box::pin(async { Err(e.into()) });
                 }
             };

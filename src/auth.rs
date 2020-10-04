@@ -8,13 +8,29 @@ use jsonwebtoken::DecodingKey;
 use jsonwebtoken::Validation;
 use serde::Deserialize;
 use serde::Serialize;
+use std::error;
+use std::fmt;
+
+#[derive(Debug, PartialEq)]
+pub enum AuthorizationError {
+    NoAuthorizationForAction,
+}
+
+impl fmt::Display for AuthorizationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl error::Error for AuthorizationError {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccessClaims {
-    exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    iat: usize, // Optional. Issued at (as UTC timestamp)
-    iss: String, // Optional. Issuer
-    sub: String, // Optional. Subject (whom token refers to)
+    pub exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
+    pub iat: usize, // Optional. Issued at (as UTC timestamp)
+    pub iss: String, // Optional. Issuer
+    pub user_id: i64,
+    pub username: String,
 }
 
 impl FromRequest for AccessClaims {
@@ -25,9 +41,19 @@ impl FromRequest for AccessClaims {
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         match req.extensions().get::<AccessClaims>() {
             Some(claims) => ok(claims.clone()),
-            None => err(ApiError::InternalServerError), // TODO
+            None => {
+                error!("Could not extract Claims from JWT (should have been added in middleware)");
+                err(ApiError::InternalServerError) // TODO
+            }
         }
     }
+}
+
+pub fn verify_subject(user_id: i64, sub: i64) -> Result<(), AuthorizationError> {
+    if user_id != sub {
+        return Err(AuthorizationError::NoAuthorizationForAction);
+    }
+    Ok(())
 }
 
 pub fn decode_access_jwt(
