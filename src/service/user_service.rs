@@ -6,6 +6,7 @@ use rand::Rng;
 pub enum UserServiceError {
     DatabaseEntryAlreadyExists,
     GenericDatabaseError(diesel::result::Error),
+    HashingError,
 }
 
 impl From<diesel::result::Error> for UserServiceError {
@@ -32,13 +33,23 @@ pub fn register_user(
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(32)
         .collect();
-    let hash =
-        argon2::hash_encoded(user_dto.password.as_bytes(), salt.as_bytes(), argon2_config).unwrap();
+    let hash = argon2::hash_encoded(user_dto.password.as_bytes(), salt.as_bytes(), argon2_config)
+        .map_err(|e| {
+        error!("{}", e);
+        UserServiceError::HashingError
+    })?;
     info!("{}", hash);
     user_dto.password = hash;
 
     let new_user = user_dto.into_new_user(PasswordVersion::ARGON2_1, UserStatus::NotVerified);
     user_repository.create_user(&new_user).map_err(|e| e.into())
+}
+
+pub fn validate_password(hash: &str, password: &[u8]) -> Result<bool, UserServiceError> {
+    Ok(argon2::verify_encoded(hash, password).map_err(|e| {
+        error!("{}", e);
+        UserServiceError::HashingError
+    })?)
 }
 
 #[cfg(test)]
@@ -90,6 +101,20 @@ mod tests {
                 )),
                 _ => Ok(1),
             }
+        }
+
+        fn get_user_by_id(&self, id: i64) -> QueryResult<Option<User>> {
+            Ok(Some(User {
+                id: id,
+                username: String::from("Gustav"),
+                email: String::from("user2@example.com"),
+                password: String::from("somepwhash"),
+                password_version: 1,
+                date_of_birth: NaiveDate::from_ymd(1992, 1, 1),
+                status: 1,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            }))
         }
 
         fn get_user_by_username(&self, username: &str) -> QueryResult<Option<User>> {

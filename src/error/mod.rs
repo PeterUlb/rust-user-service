@@ -25,8 +25,10 @@ pub enum ApiError {
     InternalServerError,
     NoAccessTokenHeader,
     JwtValidationError(jsonwebtoken::errors::Error),
+    JwtGenerationError,
     EntityAlreadyExists,
     AuthorizationError,
+    PasswordInvalid,
 }
 
 impl fmt::Display for ApiError {
@@ -97,6 +99,20 @@ impl From<&ApiError> for HttpResponse {
                 );
                 HttpResponse::build(resp.status_code).json(resp)
             }
+            ApiError::JwtGenerationError => {
+                let resp = DefaultErrorResponse::new(
+                    ErrorCode::JWT_GENERATION_ERROR,
+                    String::from("Token failure"),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
+            ApiError::PasswordInvalid => {
+                let resp = DefaultErrorResponse::new(
+                    ErrorCode::PASSWORD_INVALID,
+                    String::from("Invalid Password"),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
         }
     }
 }
@@ -118,6 +134,7 @@ impl From<UserServiceError> for ApiError {
         match error {
             UserServiceError::DatabaseEntryAlreadyExists => ApiError::EntityAlreadyExists,
             UserServiceError::GenericDatabaseError(e) => e.into(),
+            UserServiceError::HashingError => ApiError::InternalServerError,
         }
     }
 }
@@ -128,13 +145,19 @@ impl From<SessionServiceError> for ApiError {
             SessionServiceError::DatabaseEntryAlreadyExists => ApiError::EntityAlreadyExists,
             SessionServiceError::GenericDatabaseError(e) => e.into(),
             SessionServiceError::AuthorizationError(e) => e.into(),
+            SessionServiceError::UserServiceError(e) => e.into(),
+            SessionServiceError::JwtGenerationError => ApiError::JwtGenerationError,
         }
     }
 }
 
 impl From<AuthorizationError> for ApiError {
-    fn from(_: AuthorizationError) -> Self {
-        ApiError::AuthorizationError
+    fn from(error: AuthorizationError) -> Self {
+        match error {
+            AuthorizationError::PasswordInvalid => ApiError::PasswordInvalid,
+            AuthorizationError::NoAuthorizationForAction => ApiError::AuthorizationError,
+            AuthorizationError::UserDoesNotExist => ApiError::AuthorizationError,
+        }
     }
 }
 

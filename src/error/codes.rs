@@ -12,6 +12,8 @@ impl ErrorCode {
     pub const JWT_VALIDATION_ERROR: ErrorCode = ErrorCode(4003, StatusCode::UNAUTHORIZED);
     pub const MISSING_ACCESS_TOKEN_HEADER: ErrorCode = ErrorCode(4002, StatusCode::UNAUTHORIZED);
     pub const NOT_AUTHORIZED_FOR_ACTION: ErrorCode = ErrorCode(4004, StatusCode::UNAUTHORIZED);
+    pub const PASSWORD_INVALID: ErrorCode = ErrorCode(4005, StatusCode::UNAUTHORIZED);
 
     pub const INTERNAL_SERVER_ERROR: ErrorCode = ErrorCode(5000, StatusCode::INTERNAL_SERVER_ERROR);
+    pub const JWT_GENERATION_ERROR: ErrorCode = ErrorCode(5000, StatusCode::INTERNAL_SERVER_ERROR);
 }

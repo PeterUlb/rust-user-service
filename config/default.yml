@@ -6,3 +6,6 @@ logging:
   filters: actix_server=info,actix_web=info,user_service=info
 jwt:
   access_secret: super-secret-access
+  access_exp_ms: 900000
+  session_secret: super-secret-session
+  session_exp_ms: 604800000

@@ -14,6 +14,8 @@ use std::fmt;
 #[derive(Debug, PartialEq)]
 pub enum AuthorizationError {
     NoAuthorizationForAction,
+    UserDoesNotExist,
+    PasswordInvalid,
 }
 
 impl fmt::Display for AuthorizationError {
@@ -25,12 +27,19 @@ impl fmt::Display for AuthorizationError {
 impl error::Error for AuthorizationError {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SessionClaims {
+    pub exp: i64, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
+    pub iat: i64, // Optional. Issued at (as UTC timestamp)
+    pub iss: String, // Optional. Issuer
+    pub session_id: uuid::Uuid,
+    pub user_id: i64,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccessClaims {
-    pub exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    pub iat: usize, // Optional. Issued at (as UTC timestamp)
+    pub exp: i64, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
+    pub iat: i64, // Optional. Issued at (as UTC timestamp)
     pub iss: String, // Optional. Issuer
     pub user_id: i64,
-    pub username: String,
 }
 
 impl FromRequest for AccessClaims {

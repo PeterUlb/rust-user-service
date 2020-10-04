@@ -21,6 +21,9 @@ pub struct Logging {
 pub struct Jwt {
     pub active: bool,
     pub access_secret: String,
+    pub access_exp_ms: i64,
+    pub session_secret: String,
+    pub session_exp_ms: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -7,7 +7,6 @@ use actix_web::http::StatusCode;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
-use std::sync::Arc;
 
 mod api;
 mod auth;
@@ -25,7 +24,7 @@ pub async fn run() -> std::io::Result<()> {
     let start = std::time::Instant::now();
 
     let config = match configuration::Configuration::new() {
-        Ok(config) => Arc::new(config),
+        Ok(config) => config,
         Err(e) => {
             env_logger::init(); // Use default settings, since we have no config
             error!("{}", e);
@@ -48,6 +47,7 @@ pub async fn run() -> std::io::Result<()> {
 
     let argon2_config = web::Data::new(argon2::Config::default());
     let port = config.app.port;
+    let shared_config = web::Data::new(config.clone());
 
     info!("Initial setup took {} ms", start.elapsed().as_millis());
     HttpServer::new(move || {
@@ -60,10 +60,19 @@ pub async fn run() -> std::io::Result<()> {
             String::from("/api/v1/users/"),
             vec![actix_web::http::Method::POST],
         );
+        exempt_path.insert(
+            String::from("/api/v1/sessions"),
+            vec![actix_web::http::Method::POST],
+        );
+        exempt_path.insert(
+            String::from("/api/v1/sessions/"),
+            vec![actix_web::http::Method::POST],
+        );
 
         let exempt_path = std::rc::Rc::new(exempt_path);
         App::new()
             .data(pool.clone())
+            .app_data(shared_config.clone())
             .app_data(argon2_config.clone())
             // FromRequest for Json<T> checks app_data extension map for JsonConfig type, and if peresent uses that
             .app_data(

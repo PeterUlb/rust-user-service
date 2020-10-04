@@ -6,11 +6,19 @@ use diesel::prelude::*;
 use diesel::{QueryResult, RunQueryDsl};
 
 pub trait UserRepository {
+    fn get_user_by_id(&self, id: i64) -> QueryResult<Option<User>>;
     fn get_user_by_username(&self, username: &str) -> QueryResult<Option<User>>;
     fn create_user(&self, new_user: &NewUser) -> QueryResult<usize>;
 }
 
 impl UserRepository for PgPooledConnection {
+    fn get_user_by_id(&self, id: i64) -> QueryResult<Option<User>> {
+        users::table
+            .filter(users::id.eq(id))
+            .first::<User>(self)
+            .optional()
+    }
+
     fn get_user_by_username(&self, username: &str) -> QueryResult<Option<User>> {
         users::table
             .filter(users::username.eq(username))
