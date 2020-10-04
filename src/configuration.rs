@@ -24,6 +24,7 @@ pub struct Jwt {
     pub access_exp_ms: i64,
     pub session_secret: String,
     pub session_exp_ms: i64,
+    pub session_cookie_name: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

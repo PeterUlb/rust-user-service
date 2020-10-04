@@ -3,7 +3,7 @@ CREATE TABLE sessions (
   user_id BIGINT NOT NULL,
   platform VARCHAR(255) NOT NULL,  
   sub_platform VARCHAR(255) NOT NULL,
-  refreshed_at TIMESTAMP WITH TIME ZONE,
+  refreshed_at TIMESTAMP WITH TIME ZONE NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
   status INTEGER NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),

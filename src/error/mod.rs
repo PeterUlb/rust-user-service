@@ -29,6 +29,7 @@ pub enum ApiError {
     EntityAlreadyExists,
     AuthorizationError,
     PasswordInvalid,
+    SessionTokenBlacklisted,
 }
 
 impl fmt::Display for ApiError {
@@ -113,6 +114,13 @@ impl From<&ApiError> for HttpResponse {
                 );
                 HttpResponse::build(resp.status_code).json(resp)
             }
+            ApiError::SessionTokenBlacklisted => {
+                let resp = DefaultErrorResponse::new(
+                    ErrorCode::SESSION_TOKEN_BLACKLISTED,
+                    String::from("Session Token Blacklisted"),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
         }
     }
 }
@@ -157,6 +165,8 @@ impl From<AuthorizationError> for ApiError {
             AuthorizationError::PasswordInvalid => ApiError::PasswordInvalid,
             AuthorizationError::NoAuthorizationForAction => ApiError::AuthorizationError,
             AuthorizationError::UserDoesNotExist => ApiError::AuthorizationError,
+            AuthorizationError::JwtValidationError(e) => ApiError::JwtValidationError(e),
+            AuthorizationError::SessionTokenBlacklisted => ApiError::SessionTokenBlacklisted,
         }
     }
 }

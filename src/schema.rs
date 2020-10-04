@@ -4,7 +4,7 @@ table! {
         user_id -> Int8,
         platform -> Varchar,
         sub_platform -> Varchar,
-        refreshed_at -> Nullable<Timestamptz>,
+        refreshed_at -> Timestamptz,
         expires_at -> Timestamptz,
         status -> Int4,
         created_at -> Timestamptz,
@@ -26,7 +26,4 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    sessions,
-    users,
-);
+allow_tables_to_appear_in_same_query!(sessions, users,);

@@ -16,7 +16,7 @@ pub struct Session {
     pub user_id: i64,
     pub platform: String,
     pub sub_platform: String,
-    pub refreshed_at: Option<chrono::DateTime<Utc>>,
+    pub refreshed_at: chrono::DateTime<Utc>,
     pub expires_at: chrono::DateTime<Utc>,
     pub status: i32,
     pub created_at: chrono::DateTime<Utc>,
@@ -30,6 +30,7 @@ pub struct NewSession {
     pub user_id: i64,
     pub platform: String,
     pub sub_platform: String,
+    pub refreshed_at: chrono::DateTime<Utc>,
     pub expires_at: chrono::DateTime<Utc>,
     pub status: i32,
 }

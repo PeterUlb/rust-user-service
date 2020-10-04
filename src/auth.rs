@@ -11,11 +11,13 @@ use serde::Serialize;
 use std::error;
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum AuthorizationError {
     NoAuthorizationForAction,
     UserDoesNotExist,
     PasswordInvalid,
+    JwtValidationError(jsonwebtoken::errors::Error),
+    SessionTokenBlacklisted,
 }
 
 impl fmt::Display for AuthorizationError {
@@ -75,6 +77,19 @@ pub fn decode_access_jwt(
         .map_err(|e| {
             error!("{}", e);
             ApiError::JwtValidationError(e)
+        })
+}
+
+pub fn decode_session_jwt(
+    token: &str,
+    jwt_config: &configuration::Jwt,
+) -> Result<SessionClaims, AuthorizationError> {
+    let decoding_key = DecodingKey::from_secret(&jwt_config.session_secret.as_ref());
+    decode::<SessionClaims>(token, &decoding_key, &Validation::default())
+        .map(|data| data.claims)
+        .map_err(|e| {
+            error!("{}", e);
+            AuthorizationError::JwtValidationError(e)
         })
 }
 

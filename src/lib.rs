@@ -57,15 +57,11 @@ pub async fn run() -> std::io::Result<()> {
             vec![actix_web::http::Method::POST],
         );
         exempt_path.insert(
-            String::from("/api/v1/users/"),
-            vec![actix_web::http::Method::POST],
-        );
-        exempt_path.insert(
             String::from("/api/v1/sessions"),
             vec![actix_web::http::Method::POST],
         );
         exempt_path.insert(
-            String::from("/api/v1/sessions/"),
+            String::from("/api/v1/sessions/access"),
             vec![actix_web::http::Method::POST],
         );
 

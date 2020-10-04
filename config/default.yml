@@ -9,3 +9,4 @@ jwt:
   access_exp_ms: 900000
   session_secret: super-secret-session
   session_exp_ms: 604800000
+  session_cookie_name: HTSESSIONT

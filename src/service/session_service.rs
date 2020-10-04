@@ -9,7 +9,7 @@ use crate::service;
 use chrono::Utc;
 use uuid::Uuid;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum SessionServiceError {
     DatabaseEntryAlreadyExists,
     GenericDatabaseError(diesel::result::Error),
@@ -29,6 +29,18 @@ impl From<diesel::result::Error> for SessionServiceError {
             },
             _ => SessionServiceError::GenericDatabaseError(error),
         }
+    }
+}
+
+impl From<service::user_service::UserServiceError> for SessionServiceError {
+    fn from(error: service::user_service::UserServiceError) -> SessionServiceError {
+        SessionServiceError::UserServiceError(error)
+    }
+}
+
+impl From<auth::AuthorizationError> for SessionServiceError {
+    fn from(error: auth::AuthorizationError) -> SessionServiceError {
+        SessionServiceError::AuthorizationError(error)
     }
 }
 
@@ -57,8 +69,7 @@ where
         ))?;
 
     let result =
-        service::user_service::validate_password(&user.password, login_dto.password.as_bytes())
-            .map_err(|e| SessionServiceError::UserServiceError(e))?;
+        service::user_service::validate_password(&user.password, login_dto.password.as_bytes())?;
 
     if result == false {
         return Err(SessionServiceError::AuthorizationError(
@@ -71,6 +82,7 @@ where
         user_id: user.id,
         platform: login_dto.platform.clone(),
         sub_platform: login_dto.sub_platform.clone(),
+        refreshed_at: chrono::Utc::now(),
         expires_at: chrono::Utc::now()
             + chrono::Duration::milliseconds(token_config.session_exp_ms),
         status: SessionStatus::Active as i32,
@@ -89,6 +101,43 @@ where
         SessionServiceError::JwtGenerationError
     })?;
     let access_token = generate_access_token(session.user_id, token_config).map_err(|e| {
+        error!("{}", e);
+        SessionServiceError::JwtGenerationError
+    })?;
+
+    Ok(TokenPairDto {
+        session_token,
+        access_token,
+    })
+}
+
+pub fn create_access_token_and_refresh<R>(
+    repositories: &R,
+    session_token: &str,
+    token_config: &Jwt,
+) -> Result<TokenPairDto, SessionServiceError>
+where
+    R: UserRepository + SessionRepository,
+{
+    let claims = auth::decode_session_jwt(session_token, token_config)?;
+    let session = match repositories.get_session_by_id(claims.session_id)? {
+        Some(session) => session,
+        None => return Err(auth::AuthorizationError::NoAuthorizationForAction.into()),
+    };
+    auth::verify_subject(claims.user_id, session.user_id)?;
+    if session.status == SessionStatus::Blacklisted as i32 {
+        return Err(auth::AuthorizationError::SessionTokenBlacklisted.into());
+    }
+
+    let now = chrono::Utc::now();
+    let new_exp = now + chrono::Duration::milliseconds(token_config.session_exp_ms);
+    repositories.update_refreshed_timestamps(claims.session_id, now, new_exp)?;
+    let session_token = generate_session_token(&session.id, session.user_id, new_exp, token_config)
+        .map_err(|e| {
+            error!("{}", e);
+            SessionServiceError::JwtGenerationError
+        })?;
+    let access_token = generate_access_token(claims.user_id, token_config).map_err(|e| {
         error!("{}", e);
         SessionServiceError::JwtGenerationError
     })?;
