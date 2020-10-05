@@ -30,6 +30,7 @@ pub enum ApiError {
     AuthorizationError,
     PasswordInvalid,
     SessionTokenBlacklisted,
+    MissingSessionCookie,
 }
 
 impl fmt::Display for ApiError {
@@ -76,6 +77,13 @@ impl From<&ApiError> for HttpResponse {
                 let resp = DefaultErrorResponse::new(
                     ErrorCode::MISSING_ACCESS_TOKEN_HEADER,
                     String::from("Missing Access Token"),
+                );
+                HttpResponse::build(resp.status_code).json(resp)
+            }
+            ApiError::MissingSessionCookie => {
+                let resp = DefaultErrorResponse::new(
+                    ErrorCode::MISSION_SESSION_COOKIE,
+                    String::from("Missing Session Cookie"),
                 );
                 HttpResponse::build(resp.status_code).json(resp)
             }

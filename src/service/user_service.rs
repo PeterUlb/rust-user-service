@@ -38,11 +38,12 @@ pub fn register_user(
         error!("{}", e);
         UserServiceError::HashingError
     })?;
-    info!("{}", hash);
     user_dto.password = hash;
 
-    let new_user = user_dto.into_new_user(PasswordVersion::ARGON2_1, UserStatus::NotVerified);
-    user_repository.create_user(&new_user).map_err(|e| e.into())
+    let mut new_user = user_dto.into_new_user(PasswordVersion::ARGON2_1, UserStatus::Active); // Should be not verified, but is like that until email is implemented
+    user_repository
+        .create_user(&mut new_user)
+        .map_err(|e| e.into())
 }
 
 pub fn validate_password(hash: &str, password: &[u8]) -> Result<bool, UserServiceError> {
@@ -92,7 +93,7 @@ mod tests {
     }
 
     impl UserRepository for MockUserRepo {
-        fn create_user(&self, _: &NewUser) -> QueryResult<usize> {
+        fn create_user(&self, _: &mut NewUser) -> QueryResult<usize> {
             match self.scenario {
                 1 => Ok(1),
                 2 => Err(diesel::result::Error::DatabaseError(

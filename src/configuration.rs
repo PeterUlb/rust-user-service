@@ -25,6 +25,9 @@ pub struct Jwt {
     pub session_secret: String,
     pub session_exp_ms: i64,
     pub session_cookie_name: String,
+    pub session_cookie_secure: bool,
+    pub domain: String,
+    pub path: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -49,6 +52,7 @@ impl Configuration {
 
         let mut s = Config::new();
         s.set_default("JWT.ACTIVE", true)?;
+        s.set_default("JWT.SESSION_COOKIE_SECURE", true)?;
 
         let config_path = env::var("APP_CONFIG_PATH").unwrap_or_else(|_| "config".into());
 

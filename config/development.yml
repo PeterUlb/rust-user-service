@@ -1,0 +1,5 @@
+database:
+  url: postgres://dev:letmein@localhost/usrv_db
+jwt:
+  domain: localhost
+  session_cookie_secure: false

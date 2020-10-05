@@ -3,6 +3,7 @@ use crate::configuration::Jwt;
 use crate::model::sessions::{
     LoginDto, NewSession, Session, SessionStatus, TokenDto, TokenPairDto,
 };
+use crate::model::users::UserStatus;
 use crate::repository::session_repository::SessionRepository;
 use crate::repository::user_repository::UserRepository;
 use crate::service;
@@ -75,6 +76,12 @@ where
         return Err(SessionServiceError::AuthorizationError(
             auth::AuthorizationError::PasswordInvalid,
         ));
+    }
+
+    if user.status != UserStatus::Active as i32 {
+        return Err(SessionServiceError::AuthorizationError(
+            auth::AuthorizationError::PasswordInvalid,
+        )); // TODO: Own error
     }
 
     let session = NewSession {

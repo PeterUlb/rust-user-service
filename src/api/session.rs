@@ -1,6 +1,6 @@
-use crate::auth;
 use crate::auth::AccessClaims;
 use crate::configuration::Configuration;
+use crate::configuration::Jwt;
 use crate::db;
 use crate::db::PgPool;
 use crate::error::ApiError;
@@ -10,17 +10,16 @@ use actix_web::web::Json;
 use actix_web::{get, http, post, web, HttpMessage, HttpResponse};
 use chrono::Utc;
 
-#[get("/sessions/{user_id}")]
+#[get("/sessions")]
 pub async fn get_sessions(
-    web::Path(user_id): web::Path<i64>,
     access_claims: AccessClaims,
     pool: web::Data<PgPool>,
 ) -> Result<Json<Vec<Session>>, ApiError> {
-    auth::verify_subject(user_id, access_claims.user_id)?;
-
     let conn = db::get_conn(&pool)?;
-    let sessions =
-        web::block(move || service::session_service::get_users_sessions(&conn, user_id)).await?;
+    let sessions = web::block(move || {
+        service::session_service::get_users_sessions(&conn, access_claims.user_id)
+    })
+    .await?;
 
     Ok(Json(sessions))
 }
@@ -40,7 +39,7 @@ pub async fn create_session(
 
     Ok(HttpResponse::Ok()
         .cookie(build_session_cookie(
-            config.jwt.session_cookie_name.clone(),
+            config.jwt.clone(),
             token_pair.session_token.token.clone(),
             &token_pair.session_token.expiration,
         ))
@@ -55,9 +54,9 @@ pub async fn create_access_token(
 ) -> Result<HttpResponse, ApiError> {
     let session_token = req
         .cookie(&config.jwt.session_cookie_name)
-        .ok_or(ApiError::NoAccessTokenHeader)?
+        .ok_or(ApiError::MissingSessionCookie)?
         .value()
-        .to_string(); //TODO: New Error
+        .to_string();
 
     let conn = db::get_conn(&pool)?;
     let jwt_config = config.jwt.clone();
@@ -72,7 +71,7 @@ pub async fn create_access_token(
 
     Ok(HttpResponse::Ok()
         .cookie(build_session_cookie(
-            config.jwt.session_cookie_name.clone(),
+            config.jwt.clone(),
             token_pair.session_token.token.clone(),
             &token_pair.session_token.expiration,
         ))
@@ -80,15 +79,15 @@ pub async fn create_access_token(
 }
 
 fn build_session_cookie(
-    cookie_name: String,
+    jwt_config: Jwt,
     token: String,
     exp_time: &chrono::DateTime<Utc>,
 ) -> actix_web::cookie::Cookie {
-    http::Cookie::build(cookie_name, token)
-        .domain("localhost") //TODO
-        .path("/") // TODO
-        .secure(false) // TODO: IN PROD MUST BE TRUE
-        .http_only(false) // TODO: IN PROD MUST BE TRUE
+    http::Cookie::build(jwt_config.session_cookie_name, token)
+        .domain(jwt_config.domain) //TODO
+        .path(jwt_config.path) // TODO
+        .secure(jwt_config.session_cookie_secure)
+        .http_only(true)
         .expires(time::OffsetDateTime::from_unix_timestamp(
             exp_time.timestamp(),
         ))

@@ -80,8 +80,6 @@ where
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
-        debug!("Jwt Auth Middleware called for {}", req.path());
-
         let mut skip = match self.exempt_path.get(req.path()) {
             Some(v) => v.contains(req.method()),
             None => req.method() == Method::OPTIONS,
@@ -93,6 +91,7 @@ where
         }
 
         if skip == false {
+            debug!("Jwt Auth Middleware called for {}", req.path());
             let token = match auth::get_auth_token(&req.headers()) {
                 Some(token) => token,
                 None => {

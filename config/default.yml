@@ -1,7 +1,5 @@
 app:
   port: 8080
-database:
-  url: postgres://dev:letmein@localhost/usrv_db
 logging:
   filters: actix_server=info,actix_web=info,user_service=info
 jwt:
@@ -10,3 +8,5 @@ jwt:
   session_secret: super-secret-session
   session_exp_ms: 604800000
   session_cookie_name: HTSESSIONT
+  path: /api/v1/sessions/
+  session_cookie_secure: true
